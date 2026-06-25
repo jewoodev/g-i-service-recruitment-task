@@ -1,0 +1,4 @@
+# Use the subclass mock maker to avoid Byte Buddy inline agent self-attach failures
+# in local/containerized JDK environments. This test suite does not require final,
+# static, or construction mocking.
+mock-maker-subclass

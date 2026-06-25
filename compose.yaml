@@ -1,0 +1,20 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: bus-monitoring-mysql
+    environment:
+      MYSQL_DATABASE: bus_monitoring
+      MYSQL_USER: bus_monitoring
+      MYSQL_PASSWORD: bus_monitoring
+      MYSQL_ROOT_PASSWORD: root
+      TZ: Asia/Seoul
+    ports:
+      - "3306:3306"
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+volumes:
+  mysql-data:
