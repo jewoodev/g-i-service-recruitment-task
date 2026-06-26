@@ -31,6 +31,8 @@
 
 ### Frontend
 
+- Node.js 24.18.0
+- npm 11.16.0
 - React
 - TypeScript
 - Vite
@@ -85,18 +87,20 @@ docker compose down -v
 
 ## 로컬 개발 실행
 
-백엔드는 MySQL이 실행 중인 상태에서 다음 명령으로 실행할 수 있습니다.
+백엔드는 MySQL이 실행 중인 상태에서 다음 명령으로 실행할 수 있습니다. SDKMAN을 사용한다면 `backend/.sdkmanrc` 기준으로 Java와 Maven 버전을 맞출 수 있습니다.
 
 ```bash
 cd backend
+sdk env
 mvn spring-boot:run
 ```
 
-프론트엔드는 개발 서버를 실행하면 `/api` 요청을 백엔드 `8080` 포트로 프록시합니다.
+프론트엔드는 `frontend/.nvmrc` 기준으로 Node.js 버전을 맞춘 뒤 실행합니다. 개발 서버를 실행하면 `/api` 요청을 백엔드 `8080` 포트로 프록시합니다.
 
 ```bash
 cd frontend
-npm install
+nvm use
+npm ci
 npm run dev
 ```
 
@@ -108,6 +112,7 @@ npm run dev
 
 ```bash
 cd backend
+sdk env
 mvn test
 ```
 
@@ -115,6 +120,7 @@ mvn test
 
 ```bash
 cd frontend
+nvm use
 npm run lint
 npm run build
 ```

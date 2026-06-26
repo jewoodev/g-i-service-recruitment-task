@@ -10,10 +10,21 @@
 - Leaflet
 - React Leaflet
 
+## 개발 환경
+
+- Node.js 24.18.0
+- npm 11.16.0
+
+`nvm`을 사용한다면 다음 명령으로 버전을 맞춘다.
+
+```bash
+nvm use
+```
+
 ## 실행 방법
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
