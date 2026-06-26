@@ -1,0 +1,7 @@
+target
+.idea
+.work
+*.iml
+AGENTS.md
+HELP.md
+*.log
