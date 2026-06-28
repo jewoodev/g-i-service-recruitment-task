@@ -145,6 +145,7 @@ docker compose up --build
 
 - [백엔드 요구사항](backend/docs/requirements.md)
 - [도메인 모델](backend/docs/domain-model.md)
+- [인덱스 설계](backend/docs/index-design.md)
 - [API 문서](backend/docs/api.md)
 - [용어 사전](backend/docs/glossary.md)
 - [제출용 설계 문서](docs/design.md)
