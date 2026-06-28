@@ -21,6 +21,9 @@
 
 # 서울 버스 관제 도메인 모델
 
+이 문서는 현재 백엔드 구현 기준의 도메인 모델을 설명한다.
+아직 구현하지 않은 쓰기 기능, 변경 행위, 전용 예외는 마지막의 향후 확장 섹션에 따로 둔다.
+
 ---
 
 ## [노선 애그리거트]
@@ -31,33 +34,28 @@ _Entity_
 - `id`: `Long`
 - `routeNumber`: 노선번호. 승객과 관제자가 인식하는 공개 업무 식별자
 - `name`: 노선명. 예: `은평공영차고지 ↔ 상명대`
-- `directions`: `RouteDirection` 1:N
-### 행위
-- `getDirection()`: 지정한 방향 구분값에 해당하는 노선 방향을 찾는다.
-- `addDirection()`: 노선에 방향별 운행 패턴을 추가한다.
 ### 규칙
 - 노선번호는 시스템 안에서 중복될 수 없다.
 - 노선번호는 숫자뿐 아니라 영문 접두사/접미사를 포함할 수 있으므로 문자열로 관리한다.
 - 노선은 방향을 직접 갖지 않는다. 방향별 운행 패턴은 `RouteDirection`으로 분리한다.
+- 현재 도메인 객체는 조회에 필요한 노선 기본 정보만 가진다. `RouteDirection` 목록은 DB 관계와 영속성 어댑터에서 다룬다.
 
 ## 노선 방향(RouteDirection)
 _Entity_
 ### 속성
 - `id`: `Long`
-- `routeId`: `Long`
+- `route`: `Route`
 - `directionType`: `RouteDirectionType` 노선 방향 구분
 - `originName`: 기점 이름
 - `destinationName`: 종점 이름
-- `routeStops`: `RouteStop` 1:N
 ### 행위
-- `displayName()`: 사람이 읽을 수 있는 방향명 생성. 예: `은평공영차고지 → 상명대`
-- `getOrderedStops()`: 정류장 순서 기준으로 정렬된 정류장 목록 조회
-- `findNextStop()`: 현재 정류장 기준 다음 정류장 조회
+- `displayName()`: 사람이 읽을 수 있는 방향명 생성. 예: `은평공영차고지 -> 상명대`
 ### 규칙
 - 하나의 노선 안에서 같은 `directionType`은 중복될 수 없다.
 - `originName`과 `destinationName`은 해당 방향 패턴의 시작과 끝을 사람이 이해할 수 있게 표현한다.
 - 정류장 순서는 노선 방향별로 관리한다.
 - 버스는 `directionType` 문자열을 직접 저장하지 않고 현재 운행 중인 `RouteDirection`을 참조한다.
+- 현재 도메인 객체는 `RouteStop` 목록을 직접 보유하지 않는다. 정류장 순서 조회는 영속성 어댑터 또는 향후 조회 모델에서 다룬다.
 
 ## 노선 방향 구분(RouteDirectionType)
 _Enum_
@@ -69,12 +67,9 @@ _Enum_
 _Entity_
 ### 속성
 - `id`: `Long`
-- `routeDirectionId`: `Long`
-- `stop`: `Stop` N:1
+- `routeDirection`: `RouteDirection`
+- `stop`: `Stop`
 - `stopOrder`: 방향 내 정류장 순서
-### 행위
-- `isBefore()`: 같은 노선 방향 안에서 다른 정류장보다 앞서는지 확인한다.
-- `isAfter()`: 같은 노선 방향 안에서 다른 정류장보다 뒤에 있는지 확인한다.
 ### 규칙
 - 같은 노선 방향 안에서 `stopOrder`는 중복될 수 없다.
 - 같은 노선 방향 안에서 같은 정류장은 중복될 수 없다.
@@ -123,24 +118,23 @@ _Entity_
 - `busNumber`: 버스번호. 관제 시스템 안에서 운행 차량을 구분하는 번호
 - `plateNumber`: 차량번호. 실제 차량 등록번호
 - `routeDirection`: `RouteDirection` 현재 운행 중인 노선 방향 패턴
-- `currentStop`: `Stop` 현재 정류장
-- `nextStop`: `Stop` 다음 정류장
+- `currentStop`: `Stop | null` 현재 정류장
+- `nextStop`: `Stop | null` 다음 정류장
 - `lastCommunicationAt`: 마지막 통신시간
-- `latestPosition`: `BusPosition`
-- `cameraStatuses`: `BusCameraStatus` 1:N
+- `latestPosition`: `BusPosition | null`
+- `cameraStatuses`: `List<BusCameraStatus>`
 ### 행위
 - `communicationStatusAt()`: 기준 시각을 받아 `BusCommunicationStatus`를 계산한다.
 - `currentSpeed()`: 최신 위치 기준 현재속도를 반환한다.
-- `changeRouteDirection()`: 운행 중인 노선 방향 패턴을 변경한다.
-- `updateStops()`: 현재 정류장과 다음 정류장을 갱신한다.
-- `recordCommunication()`: 마지막 통신시간을 갱신한다.
 ### 규칙
 - 버스번호는 시스템 안에서 중복될 수 없다.
 - 차량번호는 시스템 안에서 중복될 수 없다.
 - 버스의 통신 상태는 저장하지 않고 마지막 통신시간 기준으로 계산한다.
 - 버스는 반드시 하나의 `RouteDirection` 위에서 운행한다.
-- 현재 정류장과 다음 정류장은 버스가 참조하는 `RouteDirection`의 정류장 순서 안에 있어야 한다.
-- 다음 정류장은 현재 정류장보다 뒤의 순서를 가져야 한다.
+- 현재 정류장과 다음 정류장은 선택값이다.
+- `latestPosition`은 `buses` 테이블 컬럼이 아니다. `bus_positions`에서 버스별 최신 위치를 조회해 도메인 객체에 조합한다.
+- 현재 정류장과 다음 정류장이 버스의 `RouteDirection`에 속해야 한다는 규칙은 현재 DB 제약으로 강제하지 않는다. 쓰기 기능을 추가할 때 애플리케이션 또는 도메인 검증으로 보강한다.
+- 다음 정류장이 현재 정류장보다 뒤의 순서여야 한다는 규칙도 현재 조회 모델에서는 검증하지 않는다.
 
 ## 버스 통신 상태(BusCommunicationStatus)
 _Enum_
@@ -170,11 +164,8 @@ _Entity_
 - `busId`: `Long`
 - `cameraType`: `CameraType`
 - `receiving`: 영상 수신 여부
-- `streamUrl`: 영상 스트림 URL
-- `lastReceivedAt`: 마지막 영상 수신시간
-### 행위
-- `markReceiving()`: 영상 수신 상태로 변경하고 마지막 수신시간을 갱신한다.
-- `markNotReceiving()`: 영상 미수신 상태로 변경한다.
+- `streamUrl`: `String | null` 영상 스트림 URL
+- `lastReceivedAt`: `LocalDateTime | null` 마지막 영상 수신시간
 ### 규칙
 - 하나의 버스 안에서 같은 카메라 타입은 중복될 수 없다.
 - MVP에서는 실제 영상 스트림을 저장하지 않고 수신 상태만 관리한다.
@@ -230,17 +221,27 @@ _Enum_
 
 ---
 
-## BusNotFoundException
-_Exception_
+## [현재 예외 처리]
 
-## RouteDirectionNotFoundException
-_Exception_
+- 현재 조회 API에서 버스를 찾지 못하면 `NoSuchElementException`을 던지고, Web 어댑터의 공통 예외 핸들러가 `404 Not Found` 응답으로 변환한다.
+- 도메인 전용 `BusNotFoundException`은 아직 구현하지 않았다.
 
-## DuplicatedRouteNumberException
-_Exception_
+---
 
-## DuplicatedBusNumberException
-_Exception_
+## [향후 확장 후보]
 
-## DuplicatedPlateNumberException
-_Exception_
+- `Route.getDirection()`: 지정한 방향 구분값에 해당하는 노선 방향 조회
+- `Route.addDirection()`: 노선에 방향별 운행 패턴 추가
+- `RouteDirection.getOrderedStops()`: 정류장 순서 기준 목록 조회
+- `RouteDirection.findNextStop()`: 현재 정류장 기준 다음 정류장 조회
+- `RouteStop.isBefore()`, `RouteStop.isAfter()`: 같은 노선 방향 안에서 정류장 순서 비교
+- `Bus.changeRouteDirection()`: 운행 중인 노선 방향 패턴 변경
+- `Bus.updateStops()`: 현재 정류장과 다음 정류장 갱신
+- `Bus.recordCommunication()`: 마지막 통신시간 갱신
+- `BusCameraStatus.markReceiving()`: 영상 수신 상태로 변경하고 마지막 수신시간 갱신
+- `BusCameraStatus.markNotReceiving()`: 영상 미수신 상태로 변경
+- `BusNotFoundException`
+- `RouteDirectionNotFoundException`
+- `DuplicatedRouteNumberException`
+- `DuplicatedBusNumberException`
+- `DuplicatedPlateNumberException`
